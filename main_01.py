@@ -121,19 +121,21 @@ def get_aws_session():
 
 
 if __name__ == "__main__":
+
+    # Tester le type de fichier
     TEST_VIDEO_FILE = "./assets/tuto_maquillage.mp4"
     TEST_IMAGE_FILE = "./assets/selfie_with_johnny-depp.png"
-
     video = check_filetype(TEST_VIDEO_FILE)
     image = check_filetype(TEST_IMAGE_FILE)
-
     print(video)
     print(image)
 
+    # Afficher la première frame de la vidéo
     TEST_VIDEO_FILE = "./assets/tuto_jeux-video.mp4"
-
     frame_video = extract_frame_video(TEST_VIDEO_FILE,0)
-
-
     imgplot = plt.imshow(frame_video)
     plt.show()
+
+    get_aws_session()
+
+    
