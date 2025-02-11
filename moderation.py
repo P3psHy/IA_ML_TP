@@ -118,6 +118,44 @@ def get_aws_session():
     # Retourne l'objet session créé.
     return aws_session
 
+def moderate_image(image_path, aws_service):
+    """
+    Détecte du contenu nécessitant une modération dans une image en utilisant un service AWS spécifié.
+
+    Cette fonction ouvre une image depuis un chemin donné, puis utilise le service AWS (comme Amazon Rekognition)
+    pour détecter les contenus potentiellement inappropriés ou sensibles (comme la nudité, la violence, etc.).
+    Elle collecte et retourne une liste des étiquettes de modération identifiées pour cette image.
+
+    Paramètres :
+    - image_path (str) : Le chemin vers l'image à analyser.
+    - aws_service (object) : Un objet de service AWS configuré, capable de réaliser des opérations de détection
+      de contenu nécessitant une modération (par exemple, un client Amazon Rekognition).
+
+    Retourne :
+    - list[str] : Une liste des noms des étiquettes de modération détectées pour l'image.
+
+    Exemple d'utilisation :
+    >>> aws_rekognition_client = boto3.client('rekognition', region_name='us-east-1')
+    >>> moderate_image("/chemin/vers/image.jpg", aws_rekognition_client)
+    ['Nudity', 'Explicit Violence']
+    """
+
+    with open(image_path, 'rb') as image:
+
+        response = aws_service.detect_labels(
+            Image={
+                'Bytes': image.read()
+            },
+            MaxLabels=100,
+            MinConfidence=50
+        )
+
+    objects_list = [dic["Name"] for dic in response["Labels"]][:3]
+
+    return objects_list
+
+
+
 
 
 if __name__ == "__main__":
@@ -132,10 +170,30 @@ if __name__ == "__main__":
 
     # Afficher la première frame de la vidéo
     TEST_VIDEO_FILE = "./assets/tuto_jeux-video.mp4"
-    frame_video = extract_frame_video(TEST_VIDEO_FILE,0)
+    frame_video = extract_frame_video(TEST_VIDEO_FILE,99)
     imgplot = plt.imshow(frame_video)
-    plt.show()
+    # plt.show()
 
-    get_aws_session()
+    aws_session = get_aws_session()
+    s3 = aws_session.client('s3')
+    s3.create_bucket(Bucket='sdv-tp-socialmedia-rekognition')
+    rekognition = aws_session.client('rekognition')
 
+    TEST_IMAGE_FILE_1 = "./assets/haine.png"
+    TEST_IMAGE_FILE_2 = "./assets/vulgaire.png"
+    TEST_IMAGE_FILE_3 = "./assets/violence1.png"
+    TEST_IMAGE_FILE_4 = "./assets/no-violence1.png"
+
+    print(moderate_image(TEST_IMAGE_FILE_1, rekognition))
+    print(moderate_image(TEST_IMAGE_FILE_2, rekognition))
+    print(moderate_image(TEST_IMAGE_FILE_3, rekognition))
+    print(moderate_image(TEST_IMAGE_FILE_4, rekognition))
+
+
+    s3 = aws_session.client('s3')
+    s3.create_bucket(Bucket='sdv-tp-socialmedia-transcribe')
+    rekognition = aws_session.client('transcribe')
     
+    
+
+
