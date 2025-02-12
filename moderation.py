@@ -573,7 +573,8 @@ def process_media(media_file, rekognition, transcribe, comprehend, bucket_name):
             if(inappropriate):
                 return {
                     "error" : f"""Le contenu que vous avez chargé est inapproprié. 
-                        Contenu(s) détecté(s) : {translate.translate_text(Text=', '.join(inappropriate), SourceLanguageCode="en", TargetLanguageCode="fr")['TranslatedText']}"""
+                        Contenu(s) détecté(s) : {', '.join(inappropriate)}""",
+                    'hashtag': ""
                 }
 
             hashtag_list = ["#"+data["emotion_list"]["dominant_emotion"]]

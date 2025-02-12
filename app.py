@@ -187,50 +187,50 @@ with main:
                     temp_file.write(uploaded_content.read())
                     temp_path = temp_file.name
 
-                if file_type == "image":
-                    moderation_values = moderation.process_media(temp_path, rekognition, transcribe, comprehend, bucket_name)
+                moderation_values = moderation.process_media(temp_path, rekognition, transcribe, comprehend, bucket_name)
+                
+                with st.spinner("Analyse en cours...", show_time=True):
+                    time.sleep(5)
+                    hashtag_list = set(moderation_values["hashtag"])
 
                     if('error' in moderation_values):
-                        st.error(moderation_values["error"])
+                        st.markdown(f"""
+                            <div style="background: #A84755; color: #FFFFFF; padding: 3rem; border-radius: 8px; text-align: center;">
+                                <p>🚫</p><br>
+                                <p>{moderation_values["error"]}</p>
+                            <div>""", unsafe_allow_html=True)
                     else:
-                        st.image(uploaded_content, use_container_width=True)
-                        hashtag_list = sum([value for key, value in moderation_values.items() if isinstance(value, list)], [])
+                        if file_type == "image":
+                            st.image(uploaded_content, use_container_width=False)
+                        elif file_type == "video":
+                            st.video(uploaded_content, format="video/mp4")
+                        else:
+                            st.markdown("❌ Ce type de fichier n'est pas supporté. Veuillez réessayer !")
                     
-                elif file_type == "video":
-                    st.video(uploaded_content, format="video/mp4")
-                    video_path = AWS_SESSION.client('s3').upload_file(temp_path, bucket_name, f"uploads/{uploaded_content.name}")
-                    hashtag_list = moderation.process_media(video_path, rekognition, transcribe, comprehend, bucket_name)
-                else:
-                    st.error("❌ Ce type de fichier n'est pas supporté. Veuillez réessayer !")
+                        nb_hashtags = len(hashtag_list)
+                        num_columns = min(round(nb_hashtags / 2), 6)
+
+                        columns = st.columns(num_columns)
+
+                        unique_words_list = list(hashtag_list)
+                        chunk_size = (nb_hashtags + num_columns - 1) // num_columns
+
+                        for i, col in enumerate(columns):
+                            start_index = i * chunk_size
+                            end_index = start_index + chunk_size
+                            chunk = unique_words_list[start_index:end_index]
+                            
+                            with col:
+                                for word in chunk:
+                                    st.markdown(f"""
+                                        <p style="font-size: 13px; background-color: #9DDCFC; color: #1E90FF; border-radius: 4px; padding: 10px; margin: 5px; height: 40px; white-space: no-wrap;">
+                                            {word}
+                                        </p>
+                                        """, unsafe_allow_html=True)     
+
                 
-                hashtag = st.container()
-
-                unique_hashtags = set(hashtag_list)
-
-                nb_hashtags = len(unique_hashtags)
-                num_columns = min(round(nb_hashtags / 2), 6)
-
-                columns = st.columns(num_columns)
-
-                unique_words_list = list(unique_hashtags)
-                chunk_size = (nb_hashtags + num_columns - 1) // num_columns
-
-                for i, col in enumerate(columns):
-                    start_index = i * chunk_size
-                    end_index = start_index + chunk_size
-                    chunk = unique_words_list[start_index:end_index]
-                    
-                    with col:
-                        for word in chunk:
-                            st.markdown(f"""
-                                <p style="font-size: 13px; background-color: #9DDCFC; color: #1E90FF; border-radius: 4px; padding: 10px; margin: 5px; height: 40px; white-space: no-wrap;">
-                                    #{word}
-                                </p>
-                                """, unsafe_allow_html=True)     
-
-        
-                #with st.expander("See explanation"):
-                #    st.write(f"""{moderation_values["sous-titres"]}""")
+                        #with st.expander("See explanation"):
+                        #    st.write(f"""{moderation_values["sous-titres"]}""")
 st.markdown(
     """
     <style>
