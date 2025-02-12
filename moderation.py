@@ -188,6 +188,8 @@ def get_text_from_speech(filename, aws_service, job_name, bucket_name):
     # 1️⃣ Upload du fichier audio sur S3
     try:
         with open(filename, "rb") as f:
+            AWS_SESSION = get_aws_session()
+            s3 = AWS_SESSION.client('s3')
             s3.upload_file(filename, bucket_name, os.path.basename(filename))
         print(f"✅ Fichier {filename} uploadé sur S3 ({bucket_name})")
     except Exception as e:
@@ -602,10 +604,10 @@ def process_media(media_file, rekognition, transcribe, comprehend, bucket_name):
 if __name__ == "__main__":
 
     AWS_SESSION = get_aws_session()
-    BUCKET_NAME = 'sdv-tp-socialmedia-transcribe-erika'
+    BUCKET_NAME = 'sdv-tp-socialmedia-transcribe'
 
     s3 = AWS_SESSION.client('s3')
-    s3.create_bucket(Bucket='sdv-tp-socialmedia-erika')
+    s3.create_bucket(Bucket='sdv-tp-socialmedia')
 
 
     # Tester le type de fichier

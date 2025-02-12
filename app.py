@@ -127,7 +127,7 @@ secret_key = credentials_env.text_input("Secret Key", value=st.session_state.sec
 
 
 bucket_name = credentials_env.text_input("Nom du bucket S3", value="sdv-tp-socialmedia-erika", placeholder="exemple-bucket-sdv-2")
-
+# bucket_name = 'sdv-tp-socialmedia-transcribe'
 
 
 # ----------------------------------------------------------------------------- MAIN ------------------------------------------------------------------------------------ #
@@ -187,6 +187,7 @@ with main:
                     temp_file.write(uploaded_content.read())
                     temp_path = temp_file.name
 
+                s3 = AWS_SESSION.client('s3')
                 moderation_values = moderation.process_media(temp_path, rekognition, transcribe, comprehend, bucket_name)
                 
                 with st.spinner("Analyse en cours...", show_time=True):
@@ -229,8 +230,8 @@ with main:
                                         """, unsafe_allow_html=True)     
 
                 
-                        #with st.expander("See explanation"):
-                        #    st.write(f"""{moderation_values["sous-titres"]}""")
+                        with st.expander("Afficher les sous-titres"):
+                           st.write(f"""{moderation_values["sous-titres"]}""")
 st.markdown(
     """
     <style>
