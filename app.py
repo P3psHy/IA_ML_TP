@@ -126,9 +126,7 @@ access_key = credentials_env.text_input("Access Key", value=st.session_state.acc
 secret_key = credentials_env.text_input("Secret Key", value=st.session_state.secret_key, type="password")
 
 
-bucket_name = credentials_env.text_input("Nom du bucket S3", value="sdv-tp-socialmedia-erika", placeholder="exemple-bucket-sdv-2")
-bucket_name = 'sdv-tp-socialmedia-transcribe'
-
+bucket_name = credentials_env.text_input("Nom du bucket S3", value="sdv-tp-socialmedia-transcribe", placeholder="exemple-bucket-sdv-2")
 
 # ----------------------------------------------------------------------------- MAIN ------------------------------------------------------------------------------------ #
 
@@ -203,12 +201,14 @@ with main:
                                 <p>🚫</p><br>
                                 <p>{moderation_values["error"]}</p>
                             <div>""", unsafe_allow_html=True)
-                    else:
                     # Si le contenu est valide,
+                    else:
                         if file_type == "image":
                             st.image(uploaded_content, use_container_width=False)
                         elif file_type == "video":
+                            st.markdown('<div class="video-container">', unsafe_allow_html=True)
                             st.video(uploaded_content, format="video/mp4")
+                            st.markdown('</div>', unsafe_allow_html=True)
                         else:
                             st.markdown("❌ Ce type de fichier n'est pas supporté. Veuillez réessayer !") # Format de fichier invalide
                     
@@ -236,7 +236,9 @@ with main:
                                             {word}
                                         </p>
                                         """, unsafe_allow_html=True)     
-                
+                        
+                        st.write("")
+
                         # Sous-titres pour les vidéos
                         if file_type == "video":
                             with st.expander("Afficher les sous-titres :"):
@@ -250,6 +252,13 @@ st.markdown(
             max-width: 100% !important;
             padding-left: 5rem;
             padding-right: 5rem;
+        }
+
+        .stVideo {
+            width: 50% !important;
+            max-width: 600px;
+            display: block;
+            margin: auto !important;
         }
     </style>
     """,
