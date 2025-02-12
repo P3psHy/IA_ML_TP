@@ -183,17 +183,19 @@ with main:
                 transcribe=AWS_SESSION.client('transcribe')
                 comprehend=AWS_SESSION.client('comprehend')
                 
+                # Stockage du fichier temporairement en mémoire
                 with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_content.name.split('.')[-1]}") as temp_file:
                     temp_file.write(uploaded_content.read())
                     temp_path = temp_file.name
 
                 s3 = AWS_SESSION.client('s3')
+                # Récupération des résultats de modération du fichier
                 moderation_values = moderation.process_media(temp_path, rekognition, transcribe, comprehend, bucket_name)
                 
                 with st.spinner("Analyse en cours...", show_time=True):
                     time.sleep(5)
-                    hashtag_list = set(moderation_values["hashtag"])
 
+                    # Si le contenu n'est pas approprié,
                     if('error' in moderation_values):
                         st.markdown(f"""
                             <div style="background: #A84755; color: #FFFFFF; padding: 3rem; border-radius: 8px; text-align: center;">
@@ -201,19 +203,23 @@ with main:
                                 <p>{moderation_values["error"]}</p>
                             <div>""", unsafe_allow_html=True)
                     else:
+                    # Si le contenu est valide,
                         if file_type == "image":
                             st.image(uploaded_content, use_container_width=False)
                         elif file_type == "video":
                             st.video(uploaded_content, format="video/mp4")
                         else:
-                            st.markdown("❌ Ce type de fichier n'est pas supporté. Veuillez réessayer !")
+                            st.markdown("❌ Ce type de fichier n'est pas supporté. Veuillez réessayer !") # Format de fichier invalide
                     
+                        # Liste des hashtags
+                        hashtag_list = set(moderation_values["hashtag"])
+                        unique_words_list = list(hashtag_list)
+
+                        # Création de colonnes pour afficher les hashtags
                         nb_hashtags = len(hashtag_list)
                         num_columns = min(round(nb_hashtags / 2), 6)
 
                         columns = st.columns(num_columns)
-
-                        unique_words_list = list(hashtag_list)
                         chunk_size = (nb_hashtags + num_columns - 1) // num_columns
 
                         for i, col in enumerate(columns):
@@ -228,10 +234,12 @@ with main:
                                             {word}
                                         </p>
                                         """, unsafe_allow_html=True)     
-
                 
-                        with st.expander("Afficher les sous-titres"):
-                           st.write(f"""{moderation_values["sous-titres"]}""")
+                        # Sous-titres pour les vidéos
+                        if file_type == "video":
+                            with st.expander("Afficher les sous-titres :"):
+                                st.caption(f"""{moderation_values["sous-titres"]}""")
+
 st.markdown(
     """
     <style>
