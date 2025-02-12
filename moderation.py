@@ -146,15 +146,10 @@ def moderate_image(image_path, aws_service):
     >>> moderate_image("/chemin/vers/image.jpg", aws_rekognition_client)
     ['Nudity', 'Explicit Violence']
     """
-
-    s3 = aws_service.client('s3')
-    s3.create_bucket(Bucket='sdv-tp-socialmedia-rekognition')
-    rekognition = aws_service.client('rekognition')
-
-
+    
     with open(image_path, 'rb') as image:
 
-        response = rekognition.detect_labels(
+        response = aws_service.detect_labels(
             Image={
                 'Bytes': image.read()
             },
@@ -186,8 +181,6 @@ def get_text_from_speech(filename, aws_service, job_name, bucket_name):
     Prérequis :
     - Le fichier audio doit déjà être téléversé dans le seau S3 spécifié.
     """
-    s3 = aws_service.client('s3')
-    transcribe = aws_service.client(BUCKET_NAME)
 
     language_code = "fr-FR"
 
@@ -205,7 +198,7 @@ def get_text_from_speech(filename, aws_service, job_name, bucket_name):
 
     # 2️⃣ Lancer le job de transcription
     try:
-        transcribe.start_transcription_job(
+        aws_service.start_transcription_job(
             TranscriptionJobName=job_name,
             Media={'MediaFileUri': file_uri},
             MediaFormat=filename.split('.')[-1],  # Détecte le format (mp3, wav, etc.)
@@ -218,7 +211,7 @@ def get_text_from_speech(filename, aws_service, job_name, bucket_name):
 
     # 3️⃣ Attente de la fin du job
     while True:
-        response = transcribe.get_transcription_job(TranscriptionJobName=job_name)
+        response = aws_service.get_transcription_job(TranscriptionJobName=job_name)
         status = response['TranscriptionJob']['TranscriptionJobStatus']
         if status in ['COMPLETED', 'FAILED']:
             break
@@ -306,13 +299,8 @@ def extract_keyphrases(text, aws_service):
     >>> extract_keyphrases("Ceci est un exemple de texte.", aws_comprehend_client)
     ['#exemple', '#texte']
     """
-    s3 = aws_service.client('s3')
-    s3.create_bucket(Bucket='sdv-tp-socialmedia-comprehend')
 
-    comprehend = aws_service.client('comprehend')
-
-
-    response =comprehend.detect_key_phrases(
+    response =aws_service.detect_key_phrases(
         Text=text,
         LanguageCode='fr'
     )
@@ -345,13 +333,9 @@ def detect_objects(image_path, aws_service):
     ['Voiture', 'Arbre', 'Personne']
     """
 
-    s3 = aws_service.client('s3')
-    s3.create_bucket(Bucket='sdv-tp-socialmedia-rekognition')
-    rekognition = aws_service.client('rekognition')
-
     with open(image_path, 'rb') as image:
 
-        response = rekognition.detect_labels(
+        response = aws_service.detect_labels(
             Image={
                 'Bytes': image.read()
             },
@@ -385,14 +369,10 @@ def detect_celebrities(image_path, aws_service):
     ['Leonardo DiCaprio', 'Kate Winslet']
     """
 
-    s3 = aws_service.client('s3')
-    s3.create_bucket(Bucket='sdv-tp-socialmedia-rekognition')
-    rekognition = aws_service.client('rekognition')
-
     with open(image_path, 'rb') as image_file:
         image_bytes = image_file.read()
 
-    response = rekognition.recognize_celebrities(
+    response = aws_service.recognize_celebrities(
         Image={'Bytes': image_bytes}
     )
 
@@ -436,16 +416,13 @@ def detect_emotions(image_path, aws_service):
     >>> for face in emotions:
     ...     print(f"Émotions détectées : {face['Emotions']}")
     """
-    s3 = aws_service.client('s3')
-    s3.create_bucket(Bucket='sdv-tp-socialmedia-rekognition')
-    rekognition = aws_service.client('rekognition')
 
     # Lecture de l’image en binaire
     with open(image_path, 'rb') as image_file:
         image_bytes = image_file.read()
 
     # Appel à Amazon Rekognition
-    response = rekognition.detect_faces(
+    response = aws_service.detect_faces(
         Image={'Bytes': image_bytes},
         Attributes=['ALL']  # Permet d'obtenir toutes les informations, y compris les émotions
     )
@@ -573,35 +550,60 @@ def process_media(media_file, rekognition, transcribe, comprehend, bucket_name):
     file_type = check_filetype(media_file)
 
     match(file_type):
-        case: "image"
+        case "image":
+            data = {
+                "moderation_list" : moderate_image(image_path=media_file, aws_service=rekognition),
+                "object_list" : detect_objects(image_path=media_file, aws_service=rekognition),
+                "emotion_list" : summarize_emotions(detect_emotions(image_path=media_file, aws_service=rekognition)),
+                "celebrity_list" : detect_celebrities(image_path=media_file, aws_service=rekognition)
+            }
 
-        case: "video"
+            return data
 
-    return dict
+        case "video":
+            print("File = video")
+
+            text = get_text_from_speech(
+                filename=media_file,
+                aws_service=transcribe,
+                job_name=f"transcription-{int(time.time())}",
+                bucket_name=bucket_name
+            )
+
+            return {
+                "sous-titres": text,
+                "hashtag": extract_keyphrases(text=clean_text(text), aws_service=comprehend)
+            }
 
 if __name__ == "__main__":
+
+    AWS_SESSION = get_aws_session()
+    BUCKET_NAME = 'sdv-tp-socialmedia-transcribe'
+
+    s3 = AWS_SESSION.client('s3')
+    s3.create_bucket(Bucket='sdv-tp-socialmedia')
+
 
     # Tester le type de fichier
     TEST_VIDEO_FILE = "./assets/tuto_maquillage.mp4"
     TEST_IMAGE_FILE = "./assets/selfie_with_johnny-depp.png"
-    video = check_filetype(TEST_VIDEO_FILE)
-    image = check_filetype(TEST_IMAGE_FILE)
+    # video = check_filetype(TEST_VIDEO_FILE)
+    # image = check_filetype(TEST_IMAGE_FILE)
 
 
-    # Afficher la première frame de la vidéo
-    TEST_VIDEO_FILE = "./assets/tuto_jeux-video.mp4"
-    frame_video = extract_frame_video(TEST_VIDEO_FILE,99)
-    imgplot = plt.imshow(frame_video)
+    # # Afficher la première frame de la vidéo
+    # TEST_VIDEO_FILE = "./assets/tuto_jeux-video.mp4"
+    # frame_video = extract_frame_video(TEST_VIDEO_FILE,99)
+    # imgplot = plt.imshow(frame_video)
     # plt.show()
-
-    AWS_SESSION = get_aws_session()
 
     TEST_IMAGE_FILE_1 = "./assets/haine.png"
     TEST_IMAGE_FILE_2 = "./assets/vulgaire.png"
     TEST_IMAGE_FILE_3 = "./assets/violence1.png"
     TEST_IMAGE_FILE_4 = "./assets/no-violence1.png"
 
-    # print(moderate_image(TEST_IMAGE_FILE_1, AWS_SESSION))
+    # print(moderate_image(TEST_IMAGE_FILE_1, AWS_SESSION.client('rekognition')))
+    # quit()
     # print(moderate_image(TEST_IMAGE_FILE_2, AWS_SESSION))
     # print(moderate_image(TEST_IMAGE_FILE_3, AWS_SESSION))
     # print(moderate_image(TEST_IMAGE_FILE_4, AWS_SESSION))
@@ -612,13 +614,13 @@ if __name__ == "__main__":
 
     # text=get_text_from_speech(
     #         filename=TEST_VIDEO_FILE,
-    #         aws_service=AWS_SESSION,
+    #         aws_service=AWS_SESSION.client('transcribe'),
     #         job_name=f"transcription-{int(time.time())}",
     #         bucket_name=BUCKET_NAME
     #     )
-
+    # print(text)
     # cleaned_text = clean_text(text)
-
+    
     # print(extract_keyphrases(
     #     text=cleaned_text,
     #     aws_service=AWS_SESSION
@@ -663,6 +665,16 @@ if __name__ == "__main__":
 
 
 
+    TEST_IMAGE_FILE_1 = "./assets/selfie_with_mariah-carey.png"
+    TEST_VIDEO_FILE_1 = "./assets/tuto_maquillage.mp4"
+    result = process_media(
+        media_file=TEST_IMAGE_FILE_1,
+        rekognition=AWS_SESSION.client('rekognition'),
+        transcribe=AWS_SESSION.client('transcribe'),
+        comprehend=AWS_SESSION.client('comprehend'),
+        bucket_name=BUCKET_NAME
+    )
+    print(result)
 
 
 
