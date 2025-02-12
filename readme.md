@@ -1,18 +1,10 @@
-# AWS SocialMedia
+# AWS_SocialMedia
 Projet réalisé par
-- Erika
+- Erika Andriafalimanana
 - Martin Chanudet
 
 ## Description
 Outil de modération utilisant AWS pour modérer des images ou vidéos et en sortir des sous-titres ainsi qu'une liste de Hashtag
-
-## Table des Matières
-- [Installation](#installation)
-- [Utilisation](#utilisation)
-- [Configuration](#configuration)
-- [Fonctionnalités](#fonctionnalités)
-- [Contributions](#contributions)
-- [Licence](#licence)
 
 ## Installation
 ### Prérequis
@@ -21,6 +13,6 @@ Outil de modération utilisant AWS pour modérer des images ou vidéos et en sor
 
 ### Étapes d'installation
 ```sh
-git clone https://github.com/utilisateur/nom-du-projet.git
-cd nom-du-projet
+git clone https://github.com/utilisateur/IA_ML_TP.git
+cd IA_ML_TP
 pip install -r requirements.txt  # ou npm install

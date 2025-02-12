@@ -555,51 +555,49 @@ def process_media(media_file, rekognition, transcribe, comprehend, bucket_name):
     inappropriate_labels = ["Pornography", "Fighting", "Weapon", "Protest", "Explicit", "Porn", "XXX", "Nudity", "War", "Suggestive Content", 
         "Violence", "Assault", "Torture", "Drug", "Hate", "Abuse", "Hate Scpeech", "Suicide", "Terrorism"]
 
-    match(file_type):
-        case "image":
+    if file_type == "image":
+        data = {
+            "moderation_list" : moderate_image(image_path=media_file, aws_service=rekognition),
+            "object_list" : detect_objects(image_path=media_file, aws_service=rekognition),
+            "emotion_list" : summarize_emotions(detect_emotions(image_path=media_file, aws_service=rekognition)),
+            "celebrity_list" : detect_celebrities(image_path=media_file, aws_service=rekognition)
+        }
 
-            data = {
-                "moderation_list" : moderate_image(image_path=media_file, aws_service=rekognition),
-                "object_list" : detect_objects(image_path=media_file, aws_service=rekognition),
-                "emotion_list" : summarize_emotions(detect_emotions(image_path=media_file, aws_service=rekognition)),
-                "celebrity_list" : detect_celebrities(image_path=media_file, aws_service=rekognition)
-            }
-
-            inappropriate = []
-            for key, value in data.items():
-                if isinstance(value, list):
-                    for label in value:
-                        if label in inappropriate_labels:
-                            inappropriate.append(label)
-            
-            if(inappropriate):
-                return {
-                    "error" : f"""Le contenu que vous avez chargé est inapproprié. 
-                        Contenu(s) détecté(s) : {', '.join(inappropriate)}""",
-                    'hashtag': ""
-                }
-
-            hashtag_list = ["#"+data["emotion_list"]["dominant_emotion"]]
-            hashtag_list += ["#" + word for word in data["celebrity_list"] if word or not None]
-            hashtag_list += ["#" + word for word in data["object_list"][:3]]
+        inappropriate = []
+        for key, value in data.items():
+            if isinstance(value, list):
+                for label in value:
+                    if label in inappropriate_labels:
+                        inappropriate.append(label)
+        
+        if(inappropriate):
             return {
-                "hashtag": hashtag_list
+                "error" : f"""Le contenu que vous avez chargé est inapproprié. 
+                    Contenu(s) détecté(s) : {', '.join(inappropriate)}""",
+                'hashtag': ""
             }
 
-        case "video":
-            print("File = video")
+        hashtag_list = ["#"+data["emotion_list"]["dominant_emotion"]]
+        hashtag_list += ["#" + word for word in data["celebrity_list"] if word or not None]
+        hashtag_list += ["#" + word for word in data["object_list"][:3]]
+        return {
+            "hashtag": hashtag_list
+        }
 
-            text = get_text_from_speech(
-                filename=media_file,
-                aws_service=transcribe,
-                job_name=f"transcription-{int(time.time())}",
-                bucket_name=bucket_name
-            )
+    elif file_type == "video":
+        print("File = video")
 
-            return {
-                "sous-titres": text,
-                "hashtag": extract_keyphrases(text=clean_text(text), aws_service=comprehend)
-            }
+        text = get_text_from_speech(
+            filename=media_file,
+            aws_service=transcribe,
+            job_name=f"transcription-{int(time.time())}",
+            bucket_name=bucket_name
+        )
+
+        return {
+            "sous-titres": text,
+            "hashtag": extract_keyphrases(text=clean_text(text), aws_service=comprehend)
+        }
 
 if __name__ == "__main__":
 
