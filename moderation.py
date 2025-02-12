@@ -13,6 +13,7 @@ nltk.download('stopwords')
 from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
 
+
 def check_filetype(filename):
     """
     Détermine le type de fichier en fonction de son extension.
@@ -546,11 +547,15 @@ def process_media(media_file, rekognition, transcribe, comprehend, bucket_name):
     Retourne :
     - dict : Dictionnaire contenant des hashtags pour les images ou des sous-titres et hashtags pour les vidéos.
     """
-
+    translate = get_aws_session().client('translate', region_name='us-east-1')
     file_type = check_filetype(media_file)
+
+    inappropriate_labels = ["Pornography", "Fighting", "Weapon", "Protest", "Explicit", "Porn", "XXX", "Nudity", "War", "Suggestive Content", 
+        "Violence", "Assault", "Torture", "Drug", "Hate", "Abuse", "Hate Scpeech", "Suicide", "Terrorism"]
 
     match(file_type):
         case "image":
+
             data = {
                 "moderation_list" : moderate_image(image_path=media_file, aws_service=rekognition),
                 "object_list" : detect_objects(image_path=media_file, aws_service=rekognition),
@@ -558,13 +563,20 @@ def process_media(media_file, rekognition, transcribe, comprehend, bucket_name):
                 "celebrity_list" : detect_celebrities(image_path=media_file, aws_service=rekognition)
             }
 
-            hashtag_list = ["#"+data["emotion_list"]["dominant_emotion"]]
-            hashtag_list += ["#" + word for word in data["celebrity_list"] if word or not None]
-            hashtag_list += ["#" + word for word in data["object_list"][:3]]
+            inappropriate = []
+            for key, value in data.items():
+                if isinstance(value, list):
+                    for label in value:
+                        if label in inappropriate_labels:
+                            inappropriate.append(label)
+            
+            if(inappropriate):
+                return {
+                    "error" : f"""Le contenu que vous avez chargé est inapproprié. 
+                        Contenu(s) détecté(s) : {translate.translate_text(Text=', '.join(inappropriate), SourceLanguageCode="en", TargetLanguageCode="fr")['TranslatedText']}"""
+                }
 
-            return {
-                "hashtag": hashtag_list
-            }
+            return data
 
         case "video":
             print("File = video")
@@ -584,10 +596,10 @@ def process_media(media_file, rekognition, transcribe, comprehend, bucket_name):
 if __name__ == "__main__":
 
     AWS_SESSION = get_aws_session()
-    BUCKET_NAME = 'sdv-tp-socialmedia-transcribe'
+    BUCKET_NAME = 'sdv-tp-socialmedia-transcribe-erika'
 
     s3 = AWS_SESSION.client('s3')
-    s3.create_bucket(Bucket='sdv-tp-socialmedia')
+    s3.create_bucket(Bucket='sdv-tp-socialmedia-erika')
 
 
     # Tester le type de fichier
@@ -618,13 +630,13 @@ if __name__ == "__main__":
     TEST_VIDEO_FILE = "./assets/tuto_coiffure.mp4"
     BUCKET_NAME = 'sdv-tp-socialmedia-transcribe'
 
-    # text=get_text_from_speech(
-    #         filename=TEST_VIDEO_FILE,
-    #         aws_service=AWS_SESSION.client('transcribe'),
-    #         job_name=f"transcription-{int(time.time())}",
-    #         bucket_name=BUCKET_NAME
-    #     )
-    # print(text)
+    text=get_text_from_speech(
+            filename=TEST_VIDEO_FILE,
+            aws_service=AWS_SESSION.client('transcribe'),
+            job_name=f"transcription-{int(time.time())}",
+            bucket_name=BUCKET_NAME
+        )
+    print(text)
     # cleaned_text = clean_text(text)
     
     # print(extract_keyphrases(
@@ -671,16 +683,16 @@ if __name__ == "__main__":
 
 
 
-    TEST_IMAGE_FILE_1 = "./assets/selfie_with_mariah-carey.png"
-    TEST_VIDEO_FILE_1 = "./assets/tuto_maquillage.mp4"
-    result = process_media(
-        media_file=TEST_IMAGE_FILE_1,
-        rekognition=AWS_SESSION.client('rekognition'),
-        transcribe=AWS_SESSION.client('transcribe'),
-        comprehend=AWS_SESSION.client('comprehend'),
-        bucket_name=BUCKET_NAME
-    )
-    print(result)
+    # TEST_IMAGE_FILE_1 = "./assets/selfie_with_mariah-carey.png"
+    # TEST_VIDEO_FILE_1 = "./assets/tuto_maquillage.mp4"
+    # result = process_media(
+    #     media_file=TEST_IMAGE_FILE_1,
+    #     rekognition=AWS_SESSION.client('rekognition'),
+    #     transcribe=AWS_SESSION.client('transcribe'),
+    #     comprehend=AWS_SESSION.client('comprehend'),
+    #     bucket_name=BUCKET_NAME
+    # )
+    # print(result)
 
 
 
