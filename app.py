@@ -127,7 +127,7 @@ secret_key = credentials_env.text_input("Secret Key", value=st.session_state.sec
 
 
 bucket_name = credentials_env.text_input("Nom du bucket S3", value="sdv-tp-socialmedia-erika", placeholder="exemple-bucket-sdv-2")
-# bucket_name = 'sdv-tp-socialmedia-transcribe'
+bucket_name = 'sdv-tp-socialmedia-transcribe'
 
 
 # ----------------------------------------------------------------------------- MAIN ------------------------------------------------------------------------------------ #
