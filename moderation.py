@@ -549,41 +549,51 @@ def process_media(media_file, rekognition, transcribe, comprehend, bucket_name):
     Retourne :
     - dict : Dictionnaire contenant des hashtags pour les images ou des sous-titres et hashtags pour les vidéos.
     """
-    translate = get_aws_session().client('translate', region_name='us-east-1')
     file_type = check_filetype(media_file)
 
-    inappropriate_labels = ["Pornography", "Fighting", "Weapon", "Protest", "Explicit", "Porn", "XXX", "Nudity", "War", "Suggestive Content", 
-        "Violence", "Assault", "Torture", "Drug", "Hate", "Abuse", "Hate Scpeech", "Suicide", "Terrorism"]
+    inappropriate_labels = ["Pornography", "Body Part", "Shouting", "Fight", "Fighting", "Weapon", "Protest", "Explicit", "Porn", "XXX", "Nudity", "War", "Suggestive Content", 
+        "Violence", "Assault", "Torture", "Drug", "Hate", "Abuse", "Hate Speech", "Suicide", "Terrorism"]
 
-    match(file_type):
+    match file_type:
         case "image":
-
             data = {
-                "moderation_list" : moderate_image(image_path=media_file, aws_service=rekognition),
-                "object_list" : detect_objects(image_path=media_file, aws_service=rekognition),
-                "emotion_list" : summarize_emotions(detect_emotions(image_path=media_file, aws_service=rekognition)),
-                "celebrity_list" : detect_celebrities(image_path=media_file, aws_service=rekognition)
+                "moderation_list": moderate_image(image_path=media_file, aws_service=rekognition),
+                "object_list": detect_objects(image_path=media_file, aws_service=rekognition),
+                "emotion_list": summarize_emotions(detect_emotions(image_path=media_file, aws_service=rekognition)),
+                "celebrity_list": detect_celebrities(image_path=media_file, aws_service=rekognition)
             }
 
             inappropriate = []
             for key, value in data.items():
-                if isinstance(value, list):
-                    for label in value:
-                        if label in inappropriate_labels:
-                            inappropriate.append(label)
-            
-            if(inappropriate):
+                if isinstance(value, list):  
+                    inappropriate.extend([label for label in value if label in inappropriate_labels])
+                elif isinstance(value, dict):  
+                    continue 
+                else:
+                    if value in inappropriate_labels:
+                        inappropriate.append(value)
+
+            if inappropriate:
                 return {
-                    "error" : f"""Le contenu que vous avez chargé est inapproprié. 
-                        Contenu(s) détecté(s) : {', '.join(inappropriate)}""",
-                    'hashtag': ""
+                    "error": f"""Le contenu que vous avez chargé est inapproprié.\n
+                        Contenu(s) détecté(s) : {', '.join(set(inappropriate))}""",
+                    "hashtag": None
                 }
 
-            hashtag_list = ["#"+data["emotion_list"]["dominant_emotion"]]
-            hashtag_list += ["#" + word for word in data["celebrity_list"] if word or not None]
-            hashtag_list += ["#" + word for word in data["object_list"][:3]]
+            
+            hashtag_list = []
+
+            if data["emotion_list"]["dominant_emotion"]:
+                hashtag_list.append("#" + data["emotion_list"]["dominant_emotion"])
+
+            if data["celebrity_list"]:
+                hashtag_list += ["#" + word for word in data["celebrity_list"] if word]
+
+            if data["object_list"]:
+                hashtag_list += ["#" + word for word in data["object_list"][:3] if word]
+
             return {
-                "hashtag": hashtag_list
+                "hashtag": hashtag_list if hashtag_list else None  # Return None if no hashtags
             }
 
         case "video":
@@ -596,9 +606,11 @@ def process_media(media_file, rekognition, transcribe, comprehend, bucket_name):
                 bucket_name=bucket_name
             )
 
+            hashtags = extract_keyphrases(text=clean_text(text), aws_service=comprehend)
+            
             return {
                 "sous-titres": text,
-                "hashtag": extract_keyphrases(text=clean_text(text), aws_service=comprehend)
+                "hashtag": hashtags if hashtags else None
             }
 
 if __name__ == "__main__":

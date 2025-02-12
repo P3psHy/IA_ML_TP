@@ -2,7 +2,6 @@ import streamlit as st
 import time
 import tempfile
 import moderation
-import os, boto3
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError, ClientError
 
 # ----------------------------------------------------------------------------- SIDEBAR ------------------------------------------------------------------------------------ #
@@ -35,6 +34,7 @@ def save_credentials_to_env(access_key, secret_key):
     except Exception as e:
         st.session_state.upload_message(f"❌ Erreur lors de la sauvegarde des credentials: {e}")
 
+# Vérification de la validité des credentials
 def verify_aws_credentials():
     try:
         AWS_SESSION = moderation.get_aws_session()
@@ -189,12 +189,13 @@ with main:
                     temp_path = temp_file.name
 
                 s3 = AWS_SESSION.client('s3')
-                # Récupération des résultats de modération du fichier
-                moderation_values = moderation.process_media(temp_path, rekognition, transcribe, comprehend, bucket_name)
-                
-                with st.spinner("Analyse en cours...", show_time=True):
-                    time.sleep(5)
 
+                with st.spinner("Analyse en cours..."):
+                    time.sleep(3)
+
+                    # Récupération des résultats de modération du fichier
+                    moderation_values = moderation.process_media(temp_path, rekognition, transcribe, comprehend, bucket_name)
+                    
                     # Si le contenu n'est pas approprié,
                     if('error' in moderation_values):
                         st.markdown(f"""
@@ -222,6 +223,7 @@ with main:
                         columns = st.columns(num_columns)
                         chunk_size = (nb_hashtags + num_columns - 1) // num_columns
 
+                        # On crée une ligne de colonnes, dont le nombre correspond à la moitié du nombre de hashtags.
                         for i, col in enumerate(columns):
                             start_index = i * chunk_size
                             end_index = start_index + chunk_size
@@ -240,13 +242,14 @@ with main:
                             with st.expander("Afficher les sous-titres :"):
                                 st.caption(f"""{moderation_values["sous-titres"]}""")
 
+# Cette partie fait en sorte que le main soit en pleine largeur.
 st.markdown(
     """
     <style>
         .stMain .block-container {
             max-width: 100% !important;
-            padding-left: 4rem;
-            padding-right: 4rem;
+            padding-left: 5rem;
+            padding-right: 5rem;
         }
     </style>
     """,
