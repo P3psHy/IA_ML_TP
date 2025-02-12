@@ -558,7 +558,13 @@ def process_media(media_file, rekognition, transcribe, comprehend, bucket_name):
                 "celebrity_list" : detect_celebrities(image_path=media_file, aws_service=rekognition)
             }
 
-            return data
+            hashtag_list = ["#"+data["emotion_list"]["dominant_emotion"]]
+            hashtag_list += ["#" + word for word in data["celebrity_list"] if word or not None]
+            hashtag_list += ["#" + word for word in data["object_list"][:3]]
+
+            return {
+                "hashtag": hashtag_list
+            }
 
         case "video":
             print("File = video")
